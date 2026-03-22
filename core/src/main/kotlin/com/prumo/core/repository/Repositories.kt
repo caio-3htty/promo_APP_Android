@@ -12,6 +12,7 @@ import com.prumo.core.model.AccessRequestReviewData
 import com.prumo.core.model.AccessReviewDecision
 import com.prumo.core.model.AccessAuditEntry
 import com.prumo.core.model.AccessUserRecord
+import com.prumo.core.model.CompanySuggestion
 import com.prumo.core.model.PedidoInput
 import com.prumo.core.model.PedidoResumo
 import com.prumo.core.model.RecebimentoInput
@@ -30,6 +31,7 @@ interface SessionProvider {
 interface AuthRepository : SessionProvider {
     suspend fun login(email: String, password: String): SessionToken
     suspend fun refreshSessionContext(): SessionToken?
+    suspend fun searchCompanies(query: String): List<CompanySuggestion>
     suspend fun signup(input: SignupRequestInput): SignupResult
     suspend fun getAccessRequest(token: String): AccessRequestReviewData
     suspend fun reviewAccessRequest(

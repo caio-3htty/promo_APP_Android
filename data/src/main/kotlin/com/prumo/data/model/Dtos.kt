@@ -215,7 +215,23 @@ data class MaterialFornecedorUpsertDto(
 data class AccessSignupResponseDto(
     val ok: Boolean = false,
     val message: String? = null,
+    val code: String? = null,
     @SerialName("emailSent") val emailSent: Boolean? = null
+)
+
+@Serializable
+data class CompanySuggestionDto(
+    val id: String,
+    val name: String,
+    val slug: String? = null
+)
+
+@Serializable
+data class CompanySearchResponseDto(
+    val ok: Boolean = false,
+    val message: String? = null,
+    val code: String? = null,
+    val companies: List<CompanySuggestionDto> = emptyList()
 )
 
 @Serializable
@@ -235,6 +251,7 @@ data class AccessRequestPayloadDto(
 data class AccessRequestGetResponseDto(
     val ok: Boolean = false,
     val message: String? = null,
+    val code: String? = null,
     val request: AccessRequestPayloadDto? = null
 )
 

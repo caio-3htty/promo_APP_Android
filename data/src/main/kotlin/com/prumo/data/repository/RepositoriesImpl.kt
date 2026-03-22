@@ -7,6 +7,7 @@ import com.prumo.core.model.AccessAuditEntry
 import com.prumo.core.model.AccessUserRecord
 import com.prumo.core.model.AppLanguage
 import com.prumo.core.model.AppRole
+import com.prumo.core.model.CompanySuggestion
 import com.prumo.core.model.EstoqueItem
 import com.prumo.core.model.EstoqueUpdateInput
 import com.prumo.core.model.EffectivePermission
@@ -98,8 +99,28 @@ class SupabaseAuthRepository(
         }
     }
 
+    override suspend fun searchCompanies(query: String): List<CompanySuggestion> {
+        return withContext(Dispatchers.IO) {
+            authApi.searchCompanies(query.trim()).map { company ->
+                CompanySuggestion(
+                    id = company.id,
+                    name = company.name,
+                    slug = company.slug,
+                )
+            }
+        }
+    }
+
     override suspend fun signup(input: SignupRequestInput): SignupResult {
         return withContext(Dispatchers.IO) {
+            if (input.mode == SignupMode.COMPANY_INTERNAL && input.tenantId.isNullOrBlank()) {
+                return@withContext SignupResult(
+                    ok = false,
+                    message = "Selecione uma empresa valida na lista antes de enviar.",
+                    code = "tenant_required",
+                )
+            }
+
             val response = when (input.mode) {
                 SignupMode.COMPANY_OWNER -> authApi.registerCompany(
                     email = input.email.trim().lowercase(),
@@ -108,6 +129,7 @@ class SupabaseAuthRepository(
                     username = input.username.trim(),
                     companyName = input.companyName.trim(),
                     jobTitle = input.jobTitle.trim(),
+                    phone = input.phone?.trim()?.ifBlank { null },
                     origin = input.origin
                 )
 
@@ -117,7 +139,9 @@ class SupabaseAuthRepository(
                     fullName = input.fullName.trim(),
                     username = input.username.trim(),
                     companyName = input.companyName.trim(),
+                    tenantId = input.tenantId?.trim().orEmpty(),
                     jobTitle = input.jobTitle.trim(),
+                    phone = input.phone?.trim()?.ifBlank { null },
                     requestedRole = input.requestedRole.wireValue,
                     origin = input.origin
                 )
@@ -126,7 +150,8 @@ class SupabaseAuthRepository(
             SignupResult(
                 ok = response.ok,
                 message = response.message ?: if (response.ok) "Solicitacao enviada." else "Falha ao processar solicitacao.",
-                emailSent = response.emailSent ?: false
+                emailSent = response.emailSent ?: false,
+                code = response.code,
             )
         }
     }

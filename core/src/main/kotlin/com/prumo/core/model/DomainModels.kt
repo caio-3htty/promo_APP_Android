@@ -199,8 +199,10 @@ data class SignupRequestInput(
     val password: String,
     val fullName: String,
     val companyName: String,
+    val tenantId: String? = null,
     val username: String,
     val jobTitle: String,
+    val phone: String? = null,
     val requestedRole: AppRole,
     val origin: String
 )
@@ -208,7 +210,14 @@ data class SignupRequestInput(
 data class SignupResult(
     val ok: Boolean,
     val message: String,
-    val emailSent: Boolean = false
+    val emailSent: Boolean = false,
+    val code: String? = null
+)
+
+data class CompanySuggestion(
+    val id: String,
+    val name: String,
+    val slug: String?
 )
 
 data class AccessRequestReviewData(

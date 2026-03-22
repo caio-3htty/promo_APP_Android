@@ -19,12 +19,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.prumo.core.i18n.t
 import com.prumo.core.model.AppRole
 import com.prumo.core.model.SignupMode
+import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreen(
@@ -39,6 +42,13 @@ fun LoginScreen(
             viewModel.consumeSuccess()
             onLoggedIn()
         }
+    }
+
+    LaunchedEffect(state.isSignUp, state.signupMode, state.companyName, state.tenantId) {
+        if (!state.isSignUp || state.signupMode != SignupMode.COMPANY_INTERNAL) return@LaunchedEffect
+        if (state.tenantId != null) return@LaunchedEffect
+        delay(250)
+        viewModel.searchCompanies()
     }
 
     Column(
@@ -93,6 +103,64 @@ fun LoginScreen(
                 label = { Text(t("auth.company_name")) },
                 enabled = !state.loading
             )
+            if (state.signupMode == SignupMode.COMPANY_INTERNAL) {
+                if (state.loadingCompanies) {
+                    Text(
+                        text = "Buscando empresas...",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    )
+                }
+
+                if (!state.loadingCompanies && state.companySuggestions.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        state.companySuggestions.forEach { company ->
+                            Button(
+                                onClick = { viewModel.selectCompany(company) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.loading
+                            ) {
+                                val suffix = if (company.slug.isNullOrBlank()) "" else " (${company.slug})"
+                                Text("${company.name}$suffix")
+                            }
+                        }
+                    }
+                }
+
+                if (
+                    !state.loadingCompanies &&
+                    state.companyName.trim().length >= 3 &&
+                    state.companySuggestions.isEmpty() &&
+                    state.tenantId == null
+                ) {
+                    Text(
+                        text = "Nenhuma empresa valida encontrada. Ajuste o nome e selecione na lista.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                    )
+                }
+
+                if (state.tenantId != null) {
+                    Text(
+                        text = "Empresa validada para envio da solicitacao.",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                    )
+                }
+            }
 
             OutlinedTextField(
                 modifier = Modifier
@@ -112,6 +180,17 @@ fun LoginScreen(
                 onValueChange = viewModel::onJobTitleChange,
                 label = { Text(t("auth.job_title")) },
                 enabled = !state.loading
+            )
+
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                value = state.phone,
+                onValueChange = viewModel::onPhoneChange,
+                label = { Text("Telefone (opcional)") },
+                enabled = !state.loading,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
 

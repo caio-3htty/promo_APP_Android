@@ -5,6 +5,7 @@ import com.prumo.core.model.AccessReviewDecision
 import com.prumo.core.model.AccessMode
 import com.prumo.core.model.AppLanguage
 import com.prumo.core.model.AppRole
+import com.prumo.core.model.CompanySuggestion
 import com.prumo.core.model.SessionToken
 import com.prumo.core.model.SessionUser
 import com.prumo.core.model.SignupRequestInput
@@ -68,6 +69,7 @@ private class FakeAuthRepository : AuthRepository {
     )
 
     override suspend fun refreshSessionContext(): SessionToken? = null
+    override suspend fun searchCompanies(query: String): List<CompanySuggestion> = emptyList()
     override suspend fun signup(input: SignupRequestInput): SignupResult = SignupResult(true, "ok")
     override suspend fun getAccessRequest(token: String): AccessRequestReviewData {
         error("unused")
