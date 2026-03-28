@@ -242,6 +242,7 @@ class LoginViewModel(
             "tenant_not_found" -> "Empresa nao encontrada. Solicite primeiro a criacao da conta empresa."
             "tenant_name_mismatch" -> "A empresa selecionada nao confere com o nome informado."
             "register_company_exists" -> "Empresa ja cadastrada. Use o fluxo de conta interna."
+            "email_delivery_failed" -> "Cadastro nao concluido: o e-mail de boas-vindas nao foi enviado. Tente novamente."
             "invalid_phone_format", "phone_length_invalid" -> "Telefone invalido. Informe apenas numeros entre 10 e 13 digitos."
             "invalid_email_format", "email_length_invalid" -> "E-mail invalido. Revise o formato informado."
             "invalid_full_name_format", "full_name_length_invalid" -> "Nome completo invalido. Revise os caracteres e o tamanho."
