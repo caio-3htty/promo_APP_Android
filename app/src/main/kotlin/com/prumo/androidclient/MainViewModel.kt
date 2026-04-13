@@ -13,6 +13,7 @@ data class MainUiState(
     val bootDone: Boolean = false,
     val session: SessionToken? = null,
     val selectedObraId: String? = null,
+    val sessionLocked: Boolean = false,
     val loadingAccess: Boolean = false,
     val error: String? = null
 )
@@ -22,6 +23,11 @@ class MainViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(MainUiState())
     val state: StateFlow<MainUiState> = _state.asStateFlow()
+    private var skipNextLock = false
+
+    fun markJustAuthenticated() {
+        skipNextLock = true
+    }
 
     fun bootstrap() {
         viewModelScope.launch {
@@ -34,13 +40,17 @@ class MainViewModel(
                     null
                 }
             }.onSuccess { session ->
+                val lockRequired = session?.quickUnlockEnabled == true && !skipNextLock
+                skipNextLock = false
                 _state.value = _state.value.copy(
                     bootDone = true,
                     session = session,
                     selectedObraId = _state.value.selectedObraId ?: session?.user?.defaultObraId,
+                    sessionLocked = lockRequired,
                     loadingAccess = false
                 )
             }.onFailure { error ->
+                skipNextLock = false
                 _state.value = _state.value.copy(
                     bootDone = true,
                     session = null,
@@ -56,8 +66,20 @@ class MainViewModel(
         _state.value = _state.value.copy(
             session = token,
             selectedObraId = token.user.defaultObraId,
+            sessionLocked = token.quickUnlockEnabled,
             error = null
         )
+    }
+
+    fun unlockSession() {
+        _state.value = _state.value.copy(sessionLocked = false, error = null)
+    }
+
+    fun requirePasswordLogin() {
+        viewModelScope.launch {
+            authRepository.clearSession()
+            _state.value = MainUiState(bootDone = true, session = null, sessionLocked = false)
+        }
     }
 
     fun selectObra(obraId: String) {
@@ -73,6 +95,7 @@ class MainViewModel(
                         loadingAccess = false,
                         session = refreshed,
                         selectedObraId = _state.value.selectedObraId ?: refreshed?.user?.defaultObraId,
+                        sessionLocked = refreshed?.quickUnlockEnabled == true && _state.value.sessionLocked,
                         error = null
                     )
                 }

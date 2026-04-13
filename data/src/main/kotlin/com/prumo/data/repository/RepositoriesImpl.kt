@@ -74,16 +74,19 @@ import kotlinx.serialization.json.Json
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val SESSION_POLICY_SECONDS = 30L * 24L * 60L * 60L
+private const val TEMP_SESSION_POLICY_SECONDS = 24L * 60L * 60L
+
 class SupabaseAuthRepository(
     private val restClient: SupabaseRestClient,
     private val authApi: SupabaseAuthApi,
     private val sessionStore: SessionStore
 ) : AuthRepository {
-    override suspend fun login(email: String, password: String): SessionToken {
+    override suspend fun login(email: String, password: String, rememberEnabled: Boolean): SessionToken {
         return withContext(Dispatchers.IO) {
             val auth = authApi.login(email, password)
             val user = loadUserContext(auth.user.id, auth.user.email)
-            val token = auth.toSessionToken(user)
+            val token = auth.toSessionToken(user, rememberEnabled = rememberEnabled)
             sessionStore.save(token)
             token
         }
@@ -92,8 +95,15 @@ class SupabaseAuthRepository(
     override suspend fun refreshSessionContext(): SessionToken? {
         return withContext(Dispatchers.IO) {
             val current = sessionStore.read() ?: return@withContext null
+            if (isSessionExpiredByPolicy(current)) {
+                sessionStore.clear()
+                return@withContext null
+            }
             val refreshedUser = loadUserContext(current.user.userId, current.user.email)
-            val refreshed = current.copy(user = refreshedUser)
+            val refreshed = current.copy(
+                user = refreshedUser,
+                lastRefreshAtEpochSeconds = System.currentTimeMillis() / 1000L
+            )
             sessionStore.save(refreshed)
             refreshed
         }
@@ -203,7 +213,14 @@ class SupabaseAuthRepository(
         }
     }
 
-    override suspend fun currentSession(): SessionToken? = sessionStore.read()
+    override suspend fun currentSession(): SessionToken? {
+        val current = sessionStore.read() ?: return null
+        if (isSessionExpiredByPolicy(current)) {
+            sessionStore.clear()
+            return null
+        }
+        return current
+    }
 
     override suspend fun logout() {
         withContext(Dispatchers.IO) {
@@ -1243,14 +1260,28 @@ class AppContainer(
     val usuariosRepository: UsuariosRepository = SupabaseUsuariosRepository(restClient)
 }
 
-private fun AuthResponseDto.toSessionToken(user: SessionUser): SessionToken {
+private fun AuthResponseDto.toSessionToken(
+    user: SessionUser,
+    rememberEnabled: Boolean = true
+): SessionToken {
     val now = System.currentTimeMillis() / 1000L
+    val policySeconds = if (rememberEnabled) SESSION_POLICY_SECONDS else TEMP_SESSION_POLICY_SECONDS
     return SessionToken(
         accessToken = accessToken,
         refreshToken = refreshToken,
         expiresAtEpochSeconds = now + expiresIn,
-        user = user
+        user = user,
+        sessionStartedAtEpochSeconds = now,
+        lastRefreshAtEpochSeconds = now,
+        expiresPolicyAtEpochSeconds = now + policySeconds,
+        rememberEnabled = rememberEnabled,
+        quickUnlockEnabled = true
     )
+}
+
+private fun isSessionExpiredByPolicy(token: SessionToken): Boolean {
+    val now = System.currentTimeMillis() / 1000L
+    return now > token.expiresPolicyAtEpochSeconds
 }
 
 private fun nowIso(): String = Instant.now().toString()

@@ -26,6 +26,7 @@ data class LoginUiState(
     val jobTitle: String = "",
     val phone: String = "",
     val requestedRole: AppRole = AppRole.OPERACIONAL,
+    val rememberConnected: Boolean = true,
     val loading: Boolean = false,
     val error: String? = null,
     val message: String? = null,
@@ -85,6 +86,10 @@ class LoginViewModel(
 
     fun onRequestedRoleChange(role: AppRole) {
         _uiState.value = _uiState.value.copy(requestedRole = role, error = null)
+    }
+
+    fun onRememberConnectedChange(value: Boolean) {
+        _uiState.value = _uiState.value.copy(rememberConnected = value, error = null)
     }
 
     fun toggleSignUpMode() {
@@ -160,7 +165,7 @@ class LoginViewModel(
 
         viewModelScope.launch {
             _uiState.value = snapshot.copy(loading = true, error = null)
-            runCatching { authRepository.login(snapshot.email.trim(), snapshot.password) }
+            runCatching { authRepository.login(snapshot.email.trim(), snapshot.password, snapshot.rememberConnected) }
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         loading = false,

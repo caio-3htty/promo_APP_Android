@@ -84,7 +84,12 @@ data class SessionToken(
     val accessToken: String,
     val refreshToken: String,
     val expiresAtEpochSeconds: Long,
-    val user: SessionUser
+    val user: SessionUser,
+    val sessionStartedAtEpochSeconds: Long = System.currentTimeMillis() / 1000L,
+    val lastRefreshAtEpochSeconds: Long = System.currentTimeMillis() / 1000L,
+    val expiresPolicyAtEpochSeconds: Long = (System.currentTimeMillis() / 1000L) + (30L * 24L * 60L * 60L),
+    val rememberEnabled: Boolean = true,
+    val quickUnlockEnabled: Boolean = true,
 )
 
 data class ObraSummary(

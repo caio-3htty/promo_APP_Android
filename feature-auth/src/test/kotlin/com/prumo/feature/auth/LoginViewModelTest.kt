@@ -48,7 +48,7 @@ class LoginViewModelTest {
 }
 
 private class FakeAuthRepository : AuthRepository {
-    override suspend fun login(email: String, password: String): SessionToken = SessionToken(
+    override suspend fun login(email: String, password: String, rememberEnabled: Boolean): SessionToken = SessionToken(
         accessToken = "token",
         refreshToken = "refresh",
         expiresAtEpochSeconds = 999999,

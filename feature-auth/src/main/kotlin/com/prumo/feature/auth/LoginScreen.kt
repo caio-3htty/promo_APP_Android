@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -214,6 +215,20 @@ fun LoginScreen(
             visualTransformation = PasswordVisualTransformation(),
             enabled = !state.loading
         )
+
+        if (!state.isSignUp) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = state.rememberConnected,
+                    onCheckedChange = { viewModel.onRememberConnectedChange(it) },
+                    enabled = !state.loading
+                )
+                Text("Manter conectado")
+            }
+        }
 
         if (state.isSignUp && state.signupMode == SignupMode.COMPANY_INTERNAL) {
             RolePicker(

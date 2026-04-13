@@ -29,7 +29,7 @@ interface SessionProvider {
 }
 
 interface AuthRepository : SessionProvider {
-    suspend fun login(email: String, password: String): SessionToken
+    suspend fun login(email: String, password: String, rememberEnabled: Boolean = true): SessionToken
     suspend fun refreshSessionContext(): SessionToken?
     suspend fun searchCompanies(query: String): List<CompanySuggestion>
     suspend fun signup(input: SignupRequestInput): SignupResult

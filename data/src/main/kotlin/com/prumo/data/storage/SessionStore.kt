@@ -32,10 +32,21 @@ class EncryptedSessionStore(context: Context) : SessionStore {
         val raw = prefs.getString(KEY, null) ?: return null
         return runCatching {
             val json = JSONObject(raw)
+            val now = System.currentTimeMillis() / 1000L
+            val startedAt = json.optLong("sessionStartedAtEpochSeconds", now)
+            val rememberEnabled = json.optBoolean("rememberEnabled", true)
             SessionToken(
                 accessToken = json.getString("accessToken"),
                 refreshToken = json.getString("refreshToken"),
                 expiresAtEpochSeconds = json.getLong("expiresAtEpochSeconds"),
+                sessionStartedAtEpochSeconds = startedAt,
+                lastRefreshAtEpochSeconds = json.optLong("lastRefreshAtEpochSeconds", startedAt),
+                expiresPolicyAtEpochSeconds = json.optLong(
+                    "expiresPolicyAtEpochSeconds",
+                    startedAt + if (rememberEnabled) (30L * 24L * 60L * 60L) else (24L * 60L * 60L)
+                ),
+                rememberEnabled = rememberEnabled,
+                quickUnlockEnabled = json.optBoolean("quickUnlockEnabled", true),
                 user = SessionUser(
                     userId = json.getString("userId"),
                     email = json.getString("email"),
@@ -59,6 +70,11 @@ class EncryptedSessionStore(context: Context) : SessionStore {
             .put("accessToken", token.accessToken)
             .put("refreshToken", token.refreshToken)
             .put("expiresAtEpochSeconds", token.expiresAtEpochSeconds)
+            .put("sessionStartedAtEpochSeconds", token.sessionStartedAtEpochSeconds)
+            .put("lastRefreshAtEpochSeconds", token.lastRefreshAtEpochSeconds)
+            .put("expiresPolicyAtEpochSeconds", token.expiresPolicyAtEpochSeconds)
+            .put("rememberEnabled", token.rememberEnabled)
+            .put("quickUnlockEnabled", token.quickUnlockEnabled)
             .put("userId", token.user.userId)
             .put("email", token.user.email)
             .put("fullName", token.user.fullName)

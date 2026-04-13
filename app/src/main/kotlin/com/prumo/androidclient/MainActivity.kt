@@ -1,9 +1,12 @@
 package com.prumo.androidclient
 
 import android.os.Bundle
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Surface
@@ -15,7 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +31,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.fragment.app.FragmentActivity
 import com.prumo.core.i18n.LocalI18n
 import com.prumo.core.i18n.I18nCatalog
 import com.prumo.core.i18n.t
@@ -41,6 +47,8 @@ import com.prumo.feature.estoque.EstoqueScreen
 import com.prumo.feature.estoque.EstoqueViewModel
 import com.prumo.feature.pedidos.PedidosScreen
 import com.prumo.feature.pedidos.PedidosViewModel
+import com.prumo.core.ui.AppPage
+import com.prumo.core.ui.StateMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -88,7 +96,14 @@ private fun PromoApp(container: AppContainer) {
     val i18n = remember(language) { I18nCatalog(language) }
 
     CompositionLocalProvider(LocalI18n provides i18n) {
-        NavHost(navController = navController, startDestination = AppRoutes.Splash) {
+    if (state.session != null && state.sessionLocked) {
+        QuickUnlockScreen(
+            onUnlocked = { mainViewModel.unlockSession() },
+            onRequirePassword = { mainViewModel.requirePasswordLogin() }
+        )
+        return@CompositionLocalProvider
+    }
+    NavHost(navController = navController, startDestination = AppRoutes.Splash) {
         composable(AppRoutes.Splash) {
             LaunchedEffect(state.bootDone, state.session?.user?.userId) {
                 if (!state.bootDone) return@LaunchedEffect
@@ -106,6 +121,7 @@ private fun PromoApp(container: AppContainer) {
                 viewModel = loginViewModel,
                 origin = "https://prumo.app",
                 onLoggedIn = {
+                    mainViewModel.markJustAuthenticated()
                     mainViewModel.bootstrap()
                     navController.navigate(AppRoutes.Index) {
                         popUpTo(AppRoutes.Login) { inclusive = true }
@@ -374,6 +390,90 @@ private fun hasObraReadAccess(user: SessionUser, obraId: String): Boolean {
 private fun hasObraPermission(user: SessionUser, obraId: String, permission: String): Boolean {
     if (!AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) return false
     return AccessPolicy.can(user, permission, obraId)
+}
+
+@Composable
+private fun QuickUnlockScreen(
+    onUnlocked: () -> Unit,
+    onRequirePassword: () -> Unit
+) {
+    val activity = (LocalContext.current as? FragmentActivity)
+    var message by remember { mutableStateOf<String?>(null) }
+    var prompted by remember { mutableStateOf(false) }
+
+    fun triggerPrompt() {
+        val host = activity
+        if (host == null) {
+            message = "Nao foi possivel abrir biometria neste dispositivo."
+            return
+        }
+        requestBiometricUnlock(
+            activity = host,
+            onSuccess = onUnlocked,
+            onError = { reason -> message = reason }
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (!prompted) {
+            prompted = true
+            triggerPrompt()
+        }
+    }
+
+    AppPage(title = "Desbloqueio rapido") {
+        StateMessage("Confirme sua identidade para continuar.")
+        message?.let { StateMessage(it, isError = true) }
+        androidx.compose.material3.Button(
+            onClick = { triggerPrompt() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Desbloquear com biometria/PIN")
+        }
+        androidx.compose.material3.Button(
+            onClick = onRequirePassword,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Entrar com senha")
+        }
+    }
+}
+
+private fun requestBiometricUnlock(
+    activity: FragmentActivity,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val biometricManager = BiometricManager.from(activity)
+    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    val canAuth = biometricManager.canAuthenticate(authenticators)
+    if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+        onError("Biometria/PIN do dispositivo indisponivel. Use entrar com senha.")
+        return
+    }
+
+    val executor = ContextCompat.getMainExecutor(activity)
+    val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        .setTitle("Desbloqueio rapido")
+        .setSubtitle("Confirme para continuar conectado")
+        .setAllowedAuthenticators(authenticators)
+        .build()
+
+    val prompt = BiometricPrompt(
+        activity,
+        executor,
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                onSuccess()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                onError(errString.toString())
+            }
+        }
+    )
+    prompt.authenticate(promptInfo)
 }
 
 private fun <T : ViewModel> simpleFactory(create: () -> T): ViewModelProvider.Factory {
