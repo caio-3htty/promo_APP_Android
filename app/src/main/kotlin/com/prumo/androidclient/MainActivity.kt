@@ -278,7 +278,8 @@ private fun PromoApp(container: AppContainer) {
                 } else {
                     FornecedoresManagerScreen(
                         repository = container.cadastrosRepository,
-                        canManage = AccessPolicy.canManageCadastros(user.role)
+                        canManage = AccessPolicy.canManageCadastros(user.role),
+                        onBack = { navController.navigateUp() }
                     )
                 }
             }
@@ -292,7 +293,8 @@ private fun PromoApp(container: AppContainer) {
                 } else {
                     MateriaisManagerScreen(
                         repository = container.cadastrosRepository,
-                        canManage = AccessPolicy.canManageCadastros(user.role)
+                        canManage = AccessPolicy.canManageCadastros(user.role),
+                        onBack = { navController.navigateUp() }
                     )
                 }
             }
@@ -306,7 +308,8 @@ private fun PromoApp(container: AppContainer) {
                 } else {
                     MaterialFornecedorManagerScreen(
                         repository = container.cadastrosRepository,
-                        canManage = AccessPolicy.canManageCadastros(user.role)
+                        canManage = AccessPolicy.canManageCadastros(user.role),
+                        onBack = { navController.navigateUp() }
                     )
                 }
             }

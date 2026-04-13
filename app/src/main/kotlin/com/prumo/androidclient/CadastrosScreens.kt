@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,7 +39,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun FornecedoresManagerScreen(
     repository: CadastrosRepository,
-    canManage: Boolean
+    canManage: Boolean,
+    onBack: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -74,6 +76,9 @@ fun FornecedoresManagerScreen(
     AppPage(
         title = if (showTrash) t("suppliers.trash_title") else t("suppliers.title"),
         actions = {
+            if (onBack != null) {
+                Button(onClick = onBack) { Text(t("common.back")) }
+            }
             if (canManage) {
                 Button(onClick = { showTrash = !showTrash }) {
                     Text(if (showTrash) t("common.active") else t("common.trash"))
@@ -168,7 +173,8 @@ fun FornecedoresManagerScreen(
 @Composable
 fun MateriaisManagerScreen(
     repository: CadastrosRepository,
-    canManage: Boolean
+    canManage: Boolean,
+    onBack: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -178,7 +184,7 @@ fun MateriaisManagerScreen(
     var editingId by remember { mutableStateOf<String?>(null) }
     var nome by remember { mutableStateOf("") }
     var unidade by remember { mutableStateOf("un") }
-    var tempo by remember { mutableStateOf("0") }
+    var tempo by remember { mutableStateOf("") }
 
     fun load() {
         scope.launch {
@@ -204,6 +210,9 @@ fun MateriaisManagerScreen(
     AppPage(
         title = if (showTrash) t("materials.trash_title") else t("materials.title"),
         actions = {
+            if (onBack != null) {
+                Button(onClick = onBack) { Text(t("common.back")) }
+            }
             if (canManage) {
                 Button(onClick = { showTrash = !showTrash }) {
                     Text(if (showTrash) t("common.active") else t("common.trash"))
@@ -248,7 +257,7 @@ fun MateriaisManagerScreen(
                             editingId = null
                             nome = ""
                             unidade = "un"
-                            tempo = "0"
+                            tempo = ""
                             load()
                         }.onFailure { error = it.message }
                     }
@@ -281,7 +290,7 @@ fun MateriaisManagerScreen(
                                     editingId = item.id
                                     nome = item.nome
                                     unidade = item.unidade
-                                    tempo = item.tempoProducaoPadrao?.toString() ?: "0"
+                                    tempo = item.tempoProducaoPadrao?.toString() ?: ""
                                 }) { Text(t("common.edit")) }
                                 Button(onClick = { scope.launch { repository.softDeleteMaterial(item.id); load() } }) {
                                     Text(t("common.trash"))
@@ -298,7 +307,8 @@ fun MateriaisManagerScreen(
 @Composable
 fun MaterialFornecedorManagerScreen(
     repository: CadastrosRepository,
-    canManage: Boolean
+    canManage: Boolean,
+    onBack: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -311,8 +321,8 @@ fun MaterialFornecedorManagerScreen(
     var materialId by remember { mutableStateOf("") }
     var fornecedorId by remember { mutableStateOf("") }
     var precoAtual by remember { mutableStateOf("") }
-    var pedidoMinimo by remember { mutableStateOf("0") }
-    var leadTime by remember { mutableStateOf("0") }
+    var pedidoMinimo by remember { mutableStateOf("") }
+    var leadTime by remember { mutableStateOf("") }
     var validade by remember { mutableStateOf("") }
     var showMaterialDialog by remember { mutableStateOf(false) }
     var showFornecedorDialog by remember { mutableStateOf(false) }
@@ -347,8 +357,8 @@ fun MaterialFornecedorManagerScreen(
         materialId = ""
         fornecedorId = ""
         precoAtual = ""
-        pedidoMinimo = "0"
-        leadTime = "0"
+        pedidoMinimo = ""
+        leadTime = ""
         validade = ""
     }
 
@@ -362,6 +372,9 @@ fun MaterialFornecedorManagerScreen(
     AppPage(
         title = if (showTrash) t("material_supplier.trash_title") else t("material_supplier.title"),
         actions = {
+            if (onBack != null) {
+                Button(onClick = onBack) { Text(t("common.back")) }
+            }
             if (canManage) {
                 Button(onClick = { showTrash = !showTrash }) {
                     Text(if (showTrash) t("common.active") else t("common.trash"))
@@ -532,7 +545,10 @@ private fun SimpleSelectionDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 320.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 items(options) { option ->
                     SectionCard(
                         modifier = Modifier
